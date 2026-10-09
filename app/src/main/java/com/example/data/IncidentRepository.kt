@@ -522,7 +522,11 @@ class IncidentRepository internal constructor(
                     response.body()
                         .orEmpty()
                         .filter {
-                            it.activa
+                            it.activa &&
+                                (
+                                    it.plazaId == null ||
+                                        it.plazaId == plazaId
+                                    )
                         }
                         .map {
                             it.numero
