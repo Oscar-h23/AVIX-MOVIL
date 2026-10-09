@@ -44,16 +44,16 @@ interface SigoApiService {
     suspend fun getStatus(): Response<SigoStatusResponse>
 
     /**
-     * Vías activas configuradas para una plaza.
-     * GET /api/vias?plazaId={id}
+     * Vías activas y visibles para AVIX en una plaza.
+     * GET /api/avi/vias?plazaId={id}
      */
-    @GET("api/vias")
+    @GET("api/avi/vias")
     suspend fun listarVias(
         @Query("plazaId") plazaId: Long
     ): Response<List<ViaDto>>
 
     /**
-     * Envío y confirmación de evento vehicular (FUGA / DERIVADO).
+     * Envío y confirmación de evento vehicular.
      * POST /api/avi/registros
      */
     @Headers("Content-Type: application/json")
