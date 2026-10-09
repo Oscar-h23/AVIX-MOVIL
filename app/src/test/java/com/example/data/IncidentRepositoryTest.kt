@@ -63,6 +63,11 @@ class IncidentRepositoryTest {
             ApplicationProvider
                 .getApplicationContext()
 
+        context.getSharedPreferences(
+            "avi_sigo_prefs",
+            Context.MODE_PRIVATE
+        ).edit().clear().commit()
+
         dao = FakeIncidentDao()
         session = FakeSessionStore(
             user = user(
@@ -162,6 +167,56 @@ class IncidentRepositoryTest {
             } finally {
                 Dispatchers.resetMain()
             }
+        }
+
+    @Test
+    fun `visible lane configuration filters AVIX catalog and persists`() =
+        runBlocking {
+            api.vias =
+                listOf(
+                    101,
+                    102,
+                    103
+                )
+
+            repository.cargarViasPermitidas(
+                plazaId = 3L
+            )
+
+            assertEquals(
+                setOf(101, 102, 103),
+                repository.getCatalogVias()
+            )
+            assertEquals(
+                setOf(101, 102, 103),
+                repository.getAllowedVias()
+            )
+
+            assertTrue(
+                repository.updateVisibleVias(
+                    setOf(101, 103)
+                )
+            )
+            assertFalse(
+                repository.isViaPermitida(102)
+            )
+            assertTrue(
+                repository.isViaPermitida(103)
+            )
+
+            repository.cargarViasPermitidas(
+                plazaId = 3L
+            )
+
+            assertEquals(
+                setOf(101, 103),
+                repository.getAllowedVias()
+            )
+            assertFalse(
+                repository.updateVisibleVias(
+                    emptySet()
+                )
+            )
         }
 
     @Test
@@ -618,6 +673,8 @@ private class StubSigoApiService :
     SigoApiService {
 
     var postCode = 201
+    var vias =
+        listOf(101)
     val postCalls =
         AtomicInteger(0)
     val receivedIds =
@@ -650,12 +707,12 @@ private class StubSigoApiService :
         plazaId: Long
     ): Response<List<ViaDto>> =
         Response.success(
-            listOf(
+            vias.map { numero ->
                 ViaDto(
                     plazaId = plazaId,
-                    numero = 101
+                    numero = numero
                 )
-            )
+            }
         )
 
     override suspend fun registrarEvento(
