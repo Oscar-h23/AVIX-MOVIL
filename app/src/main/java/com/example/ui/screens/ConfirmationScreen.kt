@@ -171,6 +171,7 @@ fun PantallaConfirmacion(
 ) {
     val context = LocalContext.current
     val usuario = repository.getUsuarioActual()
+    val scope = rememberCoroutineScope()
     val allowedVias by repository.allowedVias.collectAsStateWithLifecycle()
     val isSaving by draft.saving.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
