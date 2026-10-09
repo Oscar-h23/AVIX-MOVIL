@@ -169,6 +169,8 @@ enum class AviNavigationTab(val title: String) {
 @Composable
 fun AviMainDashboardScaffold(repository: IncidentRepository) {
     val context = LocalContext.current
+    val usuario = repository.getUsuarioActual()
+    val connectionState by repository.connectionState.collectAsStateWithLifecycle()
     val pendientesCount by repository.pendientesCountFlow.collectAsStateWithLifecycle(initialValue = 0)
     val allowedVias by repository.allowedVias.collectAsStateWithLifecycle()
     val speechManager = remember { AviSpeechManager.getInstance(context) }
