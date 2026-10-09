@@ -111,11 +111,6 @@ class IncidentRepository internal constructor(
     val connectionState =
         _connectionState.asStateFlow()
 
-    private val _catalogVias =
-        MutableStateFlow<Set<Int>>(emptySet())
-    val catalogVias =
-        _catalogVias.asStateFlow()
-
     private val _allowedVias =
         MutableStateFlow<Set<Int>>(emptySet())
     val allowedVias =
@@ -234,127 +229,8 @@ class IncidentRepository internal constructor(
     fun getUsuarioActual(): UsuarioDto? =
         sessionManager.getUsuario()
 
-    fun getCatalogVias(): Set<Int> =
-        _catalogVias.value
-
     fun getAllowedVias(): Set<Int> =
         _allowedVias.value
-
-    private fun visibleViasKey(
-        owner: IncidentOwner?,
-        plazaId: Long
-    ): String {
-        return "vias_visibles:${owner?.server}:${owner?.operatorId}:$plazaId"
-    }
-
-    private fun visibleViasFor(
-        catalog: Set<Int>,
-        owner: IncidentOwner?,
-        plazaId: Long
-    ): Set<Int> {
-        if (catalog.isEmpty()) {
-            return emptySet()
-        }
-
-        val key =
-            visibleViasKey(
-                owner,
-                plazaId
-            )
-
-        if (!prefs.contains(key)) {
-            return catalog
-        }
-
-        val configured =
-            prefs.getStringSet(
-                key,
-                emptySet()
-            )
-                .orEmpty()
-                .mapNotNull {
-                    it.toIntOrNull()
-                }
-                .toSet()
-                .intersect(catalog)
-
-        return configured.ifEmpty {
-            catalog
-        }
-    }
-
-    fun updateVisibleVias(
-        vias: Set<Int>
-    ): Boolean {
-        val usuario =
-            getUsuarioActual()
-                ?: return false
-        val plazaId =
-            usuario.plazaId
-                ?: return false
-        val owner =
-            currentOwner()
-                ?: return false
-        val catalog =
-            _catalogVias.value
-
-        if (
-            catalog.isEmpty() ||
-            vias.isEmpty() ||
-            !catalog.containsAll(vias)
-        ) {
-            return false
-        }
-
-        prefs.edit()
-            .putStringSet(
-                visibleViasKey(
-                    owner,
-                    plazaId
-                ),
-                vias.map {
-                    it.toString()
-                }.toSet()
-            )
-            .apply()
-
-        _allowedVias.value =
-            vias
-
-        return true
-    }
-
-    fun resetVisibleVias(): Boolean {
-        val usuario =
-            getUsuarioActual()
-                ?: return false
-        val plazaId =
-            usuario.plazaId
-                ?: return false
-        val owner =
-            currentOwner()
-                ?: return false
-        val catalog =
-            _catalogVias.value
-
-        if (catalog.isEmpty()) {
-            return false
-        }
-
-        prefs.edit()
-            .remove(
-                visibleViasKey(
-                    owner,
-                    plazaId
-                )
-            )
-            .apply()
-
-        _allowedVias.value =
-            catalog
-
-        return true
-    }
 
     fun isViaPermitida(
         via: Int
@@ -488,8 +364,6 @@ class IncidentRepository internal constructor(
 
     fun logout() {
         sessionManager.clearSession()
-        _catalogVias.value =
-            emptySet()
         _allowedVias.value =
             emptySet()
 
@@ -508,8 +382,6 @@ class IncidentRepository internal constructor(
                 .token == token
         ) {
             sessionManager.expireSession()
-            _catalogVias.value =
-                emptySet()
             _allowedVias.value =
                 emptySet()
 
@@ -674,15 +546,8 @@ class IncidentRepository internal constructor(
                     .value
                     .token == token
             ) {
-                _catalogVias.value =
-                    vias
-
                 _allowedVias.value =
-                    visibleViasFor(
-                        catalog = vias,
-                        owner = owner,
-                        plazaId = plazaId
-                    )
+                    vias
 
                 if (
                     response.isSuccessful
@@ -713,14 +578,8 @@ class IncidentRepository internal constructor(
             if (
                 currentOwner() == owner
             ) {
-                _catalogVias.value =
-                    cached
                 _allowedVias.value =
-                    visibleViasFor(
-                        catalog = cached,
-                        owner = owner,
-                        plazaId = plazaId
-                    )
+                    cached
             }
 
             _allowedVias.value
