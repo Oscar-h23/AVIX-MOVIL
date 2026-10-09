@@ -141,6 +141,9 @@ object AviParser {
     private val aliasDerivado = listOf(
         "derivado", "derivar", "desvio", "desviado", "derivacion", "derivada"
     )
+    private val aliasLiberado = listOf(
+        "liberado", "liberar", "liberada", "libero", "liberacion"
+    )
 
     private val viaKeywords = listOf("via ", "carril ", "pista ", "numero ")
 
@@ -206,8 +209,10 @@ object AviParser {
         val phrases = mutableListOf(
             "fuga",
             "derivado",
+            "liberado",
             "fuga vía",
             "derivado vía",
+            "liberado vía",
             "vía",
             "placa",
             "vía placa",
@@ -473,7 +478,8 @@ object AviParser {
 
     private fun actionDetected(clean: String): Boolean {
         return aliasFuga.any { clean.contains(it) } ||
-            aliasDerivado.any { clean.contains(it) }
+            aliasDerivado.any { clean.contains(it) } ||
+            aliasLiberado.any { clean.contains(it) }
     }
 
     private fun viaMarkerPosition(clean: String): Pair<Int, Int> {
@@ -543,7 +549,7 @@ object AviParser {
         }
 
         val prompt = when (stage) {
-            AviCommandStage.ACCION -> "Diga la acción: FUGA o DERIVADO."
+            AviCommandStage.ACCION -> "Diga la acción: FUGA, DERIVADO o LIBERADO."
             AviCommandStage.VIA -> if (
                 parsed.via != null &&
                 allowedVias.isNotEmpty() &&
@@ -583,7 +589,7 @@ object AviParser {
         if (analysis.viaMarkerDetected) score += 25
         if (analysis.plateMarkerDetected) score += 35
 
-        val actionPositions = (aliasFuga + aliasDerivado)
+        val actionPositions = (aliasFuga + aliasDerivado + aliasLiberado)
             .map { clean.indexOf(it) }
             .filter { it >= 0 }
         val actionPos = actionPositions.minOrNull() ?: -1
@@ -650,7 +656,7 @@ object AviParser {
      * Fusiona hasta cinco hipótesis del SpeechRecognizer en lugar de obligar
      * a que una sola frase gane completa.
      *
-     * - Acción: voto ponderado FUGA / DERIVADO.
+     * - Acción: voto ponderado FUGA / DERIVADO / LIBERADO.
      * - Vía: voto ponderado y filtrado por el catálogo real de SIGO.
      * - Placa: voto independiente por cada una de las seis posiciones.
      *
@@ -710,7 +716,7 @@ object AviParser {
 
             if (
                 analysis.actionDetected &&
-                parsed.accion in setOf("FUGA", "DERIVADO")
+                parsed.accion in setOf("FUGA", "DERIVADO", "LIBERADO")
             ) {
                 addVote(
                     actionVotes,
@@ -894,18 +900,23 @@ object AviParser {
 
         val hasDerivado = aliasDerivado.any { clean.contains(it) }
         val hasFuga = aliasFuga.any { clean.contains(it) }
+        val hasLiberado = aliasLiberado.any { clean.contains(it) }
 
-        val accion = when {
-            hasDerivado && !hasFuga -> "DERIVADO"
-            hasFuga && !hasDerivado -> "FUGA"
-            else -> "FUGA"
-        }
+        val detectedActions = listOfNotNull(
+            "FUGA".takeIf { hasFuga },
+            "DERIVADO".takeIf { hasDerivado },
+            "LIBERADO".takeIf { hasLiberado }
+        )
+
+        val accion = detectedActions.singleOrNull()
+            ?: detectedActions.firstOrNull()
+            ?: "FUGA"
 
         when {
-            hasDerivado && hasFuga ->
-                errores.add("Se detectaron FUGA y DERIVADO a la vez. Repita la acción.")
-            !hasDerivado && !hasFuga ->
-                errores.add("No se detectó una acción. Diga FUGA o DERIVADO.")
+            detectedActions.size > 1 ->
+                errores.add("Se detectaron varias acciones a la vez. Repita solo FUGA, DERIVADO o LIBERADO.")
+            detectedActions.isEmpty() ->
+                errores.add("No se detectó una acción. Diga FUGA, DERIVADO o LIBERADO.")
         }
 
         var viaWords = ""
@@ -931,7 +942,7 @@ object AviParser {
             viaWords = clean
         }
 
-        for (alias in aliasFuga + aliasDerivado) {
+        for (alias in aliasFuga + aliasDerivado + aliasLiberado) {
             placaWords = placaWords.replace(Regex("\\b${Regex.escape(alias)}\\b"), " ").trim()
             viaWords = viaWords.replace(Regex("\\b${Regex.escape(alias)}\\b"), " ").trim()
         }
@@ -1009,7 +1020,7 @@ object AviParser {
         }
 
         if (
-            mergedAction !in setOf("FUGA", "DERIVADO") ||
+            mergedAction !in setOf("FUGA", "DERIVADO", "LIBERADO") ||
             (!hasAction && !previousActionValid)
         ) {
             errores.add("No se detectó una acción válida.")
