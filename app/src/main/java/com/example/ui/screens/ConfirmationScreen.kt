@@ -143,6 +143,7 @@ import com.example.ui.registration.PlateConfidenceHint
 import com.example.ui.registration.RegistrationViewModel
 import com.example.ui.theme.AviActionDerivado
 import com.example.ui.theme.AviActionFuga
+import com.example.ui.theme.AviActionLiberado
 import com.example.ui.theme.AviBlueAccent
 import com.example.ui.theme.AviNavy
 import com.example.ui.theme.AviPrimaryDark
@@ -309,52 +310,51 @@ fun PantallaConfirmacion(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Selección de Acción: FUGA o DERIVADO
+                // Selección de Acción: FUGA, DERIVADO o LIBERADO
                 Text("Acción Operativa", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    // Botón FUGA
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (accionInput == "FUGA") AviActionFuga else Color(0xFFF1F5F9),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { accionInput = "FUGA" }
-                    ) {
-                        Box(
-                            modifier = Modifier.padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
+                    listOf(
+                        Triple("FUGA", AviActionFuga, "FUGA"),
+                        Triple("DERIVADO", AviActionDerivado, "DERIVADO"),
+                        Triple("LIBERADO", AviActionLiberado, "LIBERADO")
+                    ).forEach { (value, activeColor, label) ->
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (accionInput == value) {
+                                activeColor
+                            } else {
+                                Color(0xFFF1F5F9)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable {
+                                    accionInput = value
+                                    errorMessage = null
+                                }
                         ) {
-                            Text(
-                                text = "FUGA",
-                                fontWeight = FontWeight.Bold,
-                                color = if (accionInput == "FUGA") Color.White else Color(0xFF334155),
-                                fontSize = 14.sp
-                            )
-                        }
-                    }
-
-                    // Botón DERIVADO
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = if (accionInput == "DERIVADO") AviActionDerivado else Color(0xFFF1F5F9),
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { accionInput = "DERIVADO" }
-                    ) {
-                        Box(
-                            modifier = Modifier.padding(vertical = 12.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "DERIVADO",
-                                fontWeight = FontWeight.Bold,
-                                color = if (accionInput == "DERIVADO") Color.White else Color(0xFF334155),
-                                fontSize = 14.sp
-                            )
+                            Box(
+                                modifier = Modifier.padding(
+                                    horizontal = 4.dp,
+                                    vertical = 12.dp
+                                ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (accionInput == value) {
+                                        Color.White
+                                    } else {
+                                        Color(0xFF334155)
+                                    },
+                                    fontSize = 11.sp,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
