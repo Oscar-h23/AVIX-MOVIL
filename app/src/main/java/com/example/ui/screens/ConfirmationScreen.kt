@@ -501,9 +501,7 @@ fun PantallaConfirmacion(
                     OutlinedButton(
                         onClick = {
                             usuario?.plazaId?.let { plazaId ->
-                                kotlinx.coroutines.CoroutineScope(
-                                    kotlinx.coroutines.Dispatchers.Main
-                                ).launch {
+                                scope.launch {
                                     repository.cargarViasPermitidas(plazaId)
                                 }
                             }
