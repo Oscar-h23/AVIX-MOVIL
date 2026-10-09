@@ -143,6 +143,7 @@ import com.example.ui.registration.PlateConfidenceHint
 import com.example.ui.registration.RegistrationViewModel
 import com.example.ui.theme.AviActionDerivado
 import com.example.ui.theme.AviActionFuga
+import com.example.ui.theme.AviActionLiberado
 import com.example.ui.theme.AviBlueAccent
 import com.example.ui.theme.AviNavy
 import com.example.ui.theme.AviPrimaryDark
@@ -729,26 +730,25 @@ fun EditarIncidenciaDialog(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    FilterChip(
-                        selected = accionInput == "FUGA",
-                        onClick = {
-                            accionInput = "FUGA"
-                            errorMessage = null
-                        },
-                        label = { Text("FUGA") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = accionInput == "DERIVADO",
-                        onClick = {
-                            accionInput = "DERIVADO"
-                            errorMessage = null
-                        },
-                        label = { Text("DERIVADO") },
-                        modifier = Modifier.weight(1f)
-                    )
+                    listOf("FUGA", "DERIVADO", "LIBERADO").forEach { action ->
+                        FilterChip(
+                            selected = accionInput == action,
+                            onClick = {
+                                accionInput = action
+                                errorMessage = null
+                            },
+                            label = {
+                                Text(
+                                    text = action,
+                                    fontSize = 10.sp,
+                                    maxLines = 1
+                                )
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -932,15 +932,20 @@ fun IncidenteCard(
                     letterSpacing = 1.sp
                 )
 
-                // Badge Acción: FUGA o DERIVADO
+                // Badge Acción: FUGA, DERIVADO o LIBERADO
+                val actionColor = when (item.accion.uppercase()) {
+                    "FUGA" -> AviActionFuga
+                    "LIBERADO" -> AviActionLiberado
+                    else -> AviActionDerivado
+                }
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = if (item.accion == "FUGA") Color(0x22DC2626) else Color(0x222563EB)
+                    color = actionColor.copy(alpha = 0.13f)
                 ) {
                     Text(
                         text = item.accion,
                         fontWeight = FontWeight.Bold,
-                        color = if (item.accion == "FUGA") AviActionFuga else AviActionDerivado,
+                        color = actionColor,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
