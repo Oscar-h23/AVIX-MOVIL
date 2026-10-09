@@ -169,8 +169,15 @@ fun PantallaConfirmacion(
     onCancelar: () -> Unit
 ) {
     val context = LocalContext.current
+    val usuario = repository.getUsuarioActual()
     val allowedVias by repository.allowedVias.collectAsStateWithLifecycle()
     val isSaving by draft.saving.collectAsStateWithLifecycle()
+
+    LaunchedEffect(usuario?.plazaId) {
+        usuario?.plazaId?.let { plazaId ->
+            repository.cargarViasPermitidas(plazaId)
+        }
+    }
     val submitted by draft.submitted.collectAsStateWithLifecycle()
 
     val recognizedPlate = rememberSaveable {
@@ -405,16 +412,18 @@ fun PantallaConfirmacion(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // VÍA: usar selector con el catálogo real de SIGO.
-                // Si el dispositivo está offline y no hay catálogo, permitir entrada manual.
+                // VÍA: catálogo real de SIGO filtrado por la plaza del usuario.
                 Text(
-                    text = "Número de Vía",
+                    text = "Vía",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(modifier = Modifier.height(6.dp))
 
                 if (allowedVias.isNotEmpty()) {
+                    val viaSeleccionada =
+                        viaInput.toIntOrNull()?.takeIf { it in allowedVias }
+
                     Box(modifier = Modifier.fillMaxWidth()) {
                         OutlinedButton(
                             onClick = { viaMenuExpanded = true },
@@ -424,12 +433,18 @@ fun PantallaConfirmacion(
                                 .testTag("lane_select"),
                             shape = RoundedCornerShape(10.dp)
                         ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = viaInput.toIntOrNull()?.let { "Vía $it" }
-                                    ?: "Seleccionar vía",
+                                text = viaSeleccionada?.let { "Vía $it" }
+                                    ?: "Seleccionar vía de ${usuario?.plaza ?: "la plaza"}",
                                 modifier = Modifier.weight(1f),
                                 textAlign = TextAlign.Start,
-                                fontWeight = if (viaInput.isBlank()) {
+                                fontWeight = if (viaSeleccionada == null) {
                                     FontWeight.Normal
                                 } else {
                                     FontWeight.SemiBold
@@ -450,7 +465,7 @@ fun PantallaConfirmacion(
                                     text = {
                                         Text(
                                             text = "Vía $via",
-                                            fontWeight = if (viaInput == via.toString()) {
+                                            fontWeight = if (viaSeleccionada == via) {
                                                 FontWeight.Bold
                                             } else {
                                                 FontWeight.Normal
@@ -458,7 +473,7 @@ fun PantallaConfirmacion(
                                         )
                                     },
                                     leadingIcon = {
-                                        if (viaInput == via.toString()) {
+                                        if (viaSeleccionada == via) {
                                             Icon(
                                                 Icons.Default.Check,
                                                 contentDescription = null,
@@ -478,31 +493,39 @@ fun PantallaConfirmacion(
 
                     Spacer(modifier = Modifier.height(5.dp))
                     Text(
-                        text = "Vías habilitadas por SIGO: ${allowedVias.sorted().joinToString(", ")}",
+                        text = "${allowedVias.size} vía(s) activa(s) cargada(s) para ${usuario?.plaza ?: "esta plaza"}",
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    OutlinedTextField(
-                        value = viaInput,
-                        onValueChange = {
-                            if (it.all { ch -> ch.isDigit() }) {
-                                viaInput = it
-                                errorMessage = null
+                    OutlinedButton(
+                        onClick = {
+                            usuario?.plazaId?.let { plazaId ->
+                                kotlinx.coroutines.CoroutineScope(
+                                    kotlinx.coroutines.Dispatchers.Main
+                                ).launch {
+                                    repository.cargarViasPermitidas(plazaId)
+                                }
                             }
                         },
-                        label = { Text("Vía") },
-                        placeholder = { Text("Ej: 101") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
+                        enabled = usuario?.plazaId != null,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("lane_input_field")
-                    )
+                            .height(54.dp),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Cargar vías de ${usuario?.plaza ?: "la plaza"}")
+                    }
 
                     Spacer(modifier = Modifier.height(5.dp))
                     Text(
-                        text = "Sin catálogo de vías: entrada manual habilitada.",
+                        text = "No se encontraron vías activas registradas para esta plaza.",
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
