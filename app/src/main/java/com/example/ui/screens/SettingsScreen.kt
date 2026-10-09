@@ -162,7 +162,6 @@ fun PantallaConfiguracion(repository: IncidentRepository) {
     val context = LocalContext.current
     val usuario = repository.getUsuarioActual()
     val connectionState by repository.connectionState.collectAsStateWithLifecycle()
-    val catalogVias by repository.catalogVias.collectAsStateWithLifecycle()
     val allowedVias by repository.allowedVias.collectAsStateWithLifecycle()
     val unassignedCount by repository.unassignedCountFlow
         .collectAsStateWithLifecycle(initialValue = 0)
@@ -176,7 +175,6 @@ fun PantallaConfiguracion(repository: IncidentRepository) {
     }
 
     var isCheckingConnection by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
     val isBubbleRunning by FloatingBubbleService.runningState.collectAsStateWithLifecycle()
 
     Column(
@@ -245,183 +243,6 @@ fun PantallaConfiguracion(repository: IncidentRepository) {
                         fontSize = 11.sp,
                         color = Color(0xFF92400E)
                     )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Configuración local de vías visibles en AVIX
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outline
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "Vías visibles en AVIX",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
-                Text(
-                    text = "Elige qué vías quieres usar en el dictado y en los selectores. Esto no elimina ni modifica vías en SIGO.",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(
-                    modifier = Modifier.height(10.dp)
-                )
-
-                if (catalogVias.isEmpty()) {
-                    Text(
-                        text = "No hay un catálogo de vías cargado para esta plaza.",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(8.dp)
-                    )
-
-                    OutlinedButton(
-                        onClick = {
-                            usuario?.plazaId?.let { plazaId ->
-                                scope.launch {
-                                    repository.cargarViasPermitidas(
-                                        plazaId
-                                    )
-                                }
-                            }
-                        },
-                        enabled = usuario?.plazaId != null,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(
-                            modifier = Modifier.width(6.dp)
-                        )
-                        Text("Cargar vías de la plaza")
-                    }
-                } else {
-                    Text(
-                        text = "${allowedVias.size} de ${catalogVias.size} vía(s) visibles",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = AviStatusOnline
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(8.dp)
-                    )
-
-                    catalogVias
-                        .sorted()
-                        .forEach { via ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        vertical = 3.dp
-                                    ),
-                                verticalAlignment =
-                                    Alignment.CenterVertically,
-                                horizontalArrangement =
-                                    Arrangement.SpaceBetween
-                            ) {
-                                Column(
-                                    modifier =
-                                        Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = "Vía $via",
-                                        fontSize = 13.sp,
-                                        fontWeight =
-                                            FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        text =
-                                            if (via in allowedVias) {
-                                                "Visible en AVIX"
-                                            } else {
-                                                "Oculta en AVIX"
-                                            },
-                                        fontSize = 10.sp,
-                                        color =
-                                            MaterialTheme
-                                                .colorScheme
-                                                .onSurfaceVariant
-                                    )
-                                }
-
-                                Switch(
-                                    checked =
-                                        via in allowedVias,
-                                    onCheckedChange = {
-                                        visible ->
-                                        val updated =
-                                            if (visible) {
-                                                allowedVias + via
-                                            } else {
-                                                allowedVias - via
-                                            }
-
-                                        if (updated.isEmpty()) {
-                                            Toast.makeText(
-                                                context,
-                                                "AVIX debe mantener al menos una vía visible.",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        } else if (
-                                            !repository.updateVisibleVias(
-                                                updated
-                                            )
-                                        ) {
-                                            Toast.makeText(
-                                                context,
-                                                "No se pudo guardar la configuración de vías.",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    }
-                                )
-                            }
-                        }
-
-                    Spacer(
-                        modifier = Modifier.height(8.dp)
-                    )
-
-                    OutlinedButton(
-                        onClick = {
-                            if (
-                                repository.resetVisibleVias()
-                            ) {
-                                Toast.makeText(
-                                    context,
-                                    "Todas las vías vuelven a estar visibles.",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled =
-                            allowedVias != catalogVias
-                    ) {
-                        Text("Mostrar todas las vías")
-                    }
                 }
             }
         }
