@@ -11,6 +11,7 @@ enum class HistoryStatusFilter(
     TODOS("Todos"),
     FUGAS("Fugas"),
     DERIVADOS("Derivados"),
+    LIBERADOS("Liberados"),
     PENDIENTES("Pendientes"),
     RECHAZADOS("Requieren revisión")
 }
@@ -177,6 +178,12 @@ object HistoryFilters {
                         HistoryStatusFilter.DERIVADOS ->
                             incident.accion.equals(
                                 "DERIVADO",
+                                ignoreCase = true
+                            )
+
+                        HistoryStatusFilter.LIBERADOS ->
+                            incident.accion.equals(
+                                "LIBERADO",
                                 ignoreCase = true
                             )
 
