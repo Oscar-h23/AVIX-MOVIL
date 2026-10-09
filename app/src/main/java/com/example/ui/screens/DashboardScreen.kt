@@ -169,11 +169,8 @@ enum class AviNavigationTab(val title: String) {
 @Composable
 fun AviMainDashboardScaffold(repository: IncidentRepository) {
     val context = LocalContext.current
-    val usuario = repository.getUsuarioActual()
-    val connectionState by repository.connectionState.collectAsStateWithLifecycle()
     val pendientesCount by repository.pendientesCountFlow.collectAsStateWithLifecycle(initialValue = 0)
     val allowedVias by repository.allowedVias.collectAsStateWithLifecycle()
-    val bubbleRunning by FloatingBubbleService.runningState.collectAsStateWithLifecycle()
     val speechManager = remember { AviSpeechManager.getInstance(context) }
     val registrationDraft: RegistrationViewModel = viewModel()
 
@@ -263,54 +260,6 @@ fun AviMainDashboardScaffold(repository: IncidentRepository) {
                         }
                     }
 
-                    // Acceso rápido a Burbuja flotante
-                    IconButton(
-                        onClick = {
-                            if (bubbleRunning) {
-                                FloatingBubbleService.stop(context)
-                                Toast.makeText(
-                                    context,
-                                    "Burbuja AVIX desactivada",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            } else {
-                                val hasAudioPermission =
-                                    ContextCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.RECORD_AUDIO
-                                    ) == PackageManager.PERMISSION_GRANTED
-
-                                val hasOverlayPermission =
-                                    Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
-                                        Settings.canDrawOverlays(context)
-
-                                if (
-                                    !hasAudioPermission ||
-                                    !hasOverlayPermission
-                                ) {
-                                    currentTab = AviNavigationTab.INICIO
-                                    Toast.makeText(
-                                        context,
-                                        "Activa la burbuja desde Inicio para completar los permisos.",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                } else {
-                                    FloatingBubbleService.start(context)
-                                    Toast.makeText(
-                                        context,
-                                        "Burbuja AVIX activada",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Layers,
-                            contentDescription = "Burbuja Flotante",
-                            tint = if (bubbleRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -620,30 +569,52 @@ fun PantallaInicio(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            colors = CardDefaults.cardColors(
+                containerColor = if (bubbleRunning) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+                } else {
+                    MaterialTheme.colorScheme.surface
+                }
+            ),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                if (bubbleRunning) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                } else {
+                    MaterialTheme.colorScheme.outline
+                }
+            ),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
+                    modifier = Modifier.size(40.dp),
                     shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    modifier = Modifier.size(44.dp)
+                    color = if (bubbleRunning) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    }
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.Default.Person,
+                            imageVector = Icons.Default.Layers,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
+                            tint = if (bubbleRunning) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.primary
+                            },
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -652,206 +623,30 @@ fun PantallaInicio(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = usuario?.nombre ?: "Operador",
+                        text = "Burbuja AVIX",
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp
+                        fontSize = 14.sp
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "${usuario?.plaza ?: "Sin plaza"} • ${usuario?.rol ?: "OPERADOR"}",
-                        fontSize = 12.sp,
+                        text = if (bubbleRunning) {
+                            "Activa · toca la burbuja para dictar"
+                        } else {
+                            "Actívala para dictar sobre otras apps"
+                        },
+                        fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = when (connectionState) {
-                        ApiConnectionState.ONLINE -> Color(0xFFEAF8F2)
-                        ApiConnectionState.OFFLINE -> Color(0xFFFDECEC)
-                        ApiConnectionState.SIN_CONFIGURAR -> Color(0xFFFFF7E6)
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Switch(
+                    checked = bubbleRunning,
+                    onCheckedChange = {
+                        toggleBubble()
                     }
-                ) {
-                    Text(
-                        text = when (connectionState) {
-                            ApiConnectionState.ONLINE -> "Online"
-                            ApiConnectionState.OFFLINE -> "Offline"
-                            ApiConnectionState.SIN_CONFIGURAR -> "Config"
-                        },
-                        color = when (connectionState) {
-                            ApiConnectionState.ONLINE -> AviStatusOnline
-                            ApiConnectionState.OFFLINE -> AviStatusOffline
-                            ApiConnectionState.SIN_CONFIGURAR -> AviStatusPending
-                        },
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = if (bubbleRunning) {
-                    Color(0xFFF0F7FF)
-                } else {
-                    MaterialTheme.colorScheme.surface
-                }
-            ),
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp,
-                if (bubbleRunning) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
-                } else {
-                    MaterialTheme.colorScheme.outline
-                }
-            ),
-            elevation = CardDefaults.cardElevation(
-                defaultElevation = 0.dp
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        modifier = Modifier.size(44.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (bubbleRunning) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.primaryContainer
-                        }
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Layers,
-                                contentDescription = null,
-                                tint = if (bubbleRunning) {
-                                    Color.White
-                                } else {
-                                    MaterialTheme.colorScheme.primary
-                                },
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Column(
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = "Burbuja AVIX",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                        Text(
-                            text = if (bubbleRunning) {
-                                "Activa sobre otras aplicaciones"
-                            } else {
-                                "Acceso rápido mientras usas otras apps"
-                            },
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = if (bubbleRunning) {
-                            Color(0xFFE7F7EF)
-                        } else {
-                            Color(0xFFF1F5F9)
-                        }
-                    ) {
-                        Text(
-                            text = if (bubbleRunning) {
-                                "ACTIVA"
-                            } else {
-                                "INACTIVA"
-                            },
-                            color = if (bubbleRunning) {
-                                AviStatusOnline
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(
-                                horizontal = 9.dp,
-                                vertical = 5.dp
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = if (bubbleRunning) {
-                        "Toca la burbuja flotante y AVIX abrirá el panel e iniciará el reconocimiento de voz automáticamente."
-                    } else {
-                        "Actívala para registrar por voz sin volver a AVIX. Al tocar la burbuja, el micrófono comenzará a escuchar automáticamente."
-                    },
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                if (bubbleRunning) {
-                    OutlinedButton(
-                        onClick = toggleBubble,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(46.dp),
-                        shape = RoundedCornerShape(11.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Stop,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Desactivar burbuja",
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                } else {
-                    Button(
-                        onClick = toggleBubble,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
-                        shape = RoundedCornerShape(11.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AviNavy
-                        )
-                    ) {
-                        Icon(
-                            Icons.Default.Layers,
-                            contentDescription = null,
-                            modifier = Modifier.size(19.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Activar burbuja AVIX",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
             }
         }
 
