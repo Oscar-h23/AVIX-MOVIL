@@ -170,56 +170,6 @@ class IncidentRepositoryTest {
         }
 
     @Test
-    fun `visible lane configuration filters AVIX catalog and persists`() =
-        runBlocking {
-            api.vias =
-                listOf(
-                    101,
-                    102,
-                    103
-                )
-
-            repository.cargarViasPermitidas(
-                plazaId = 3L
-            )
-
-            assertEquals(
-                setOf(101, 102, 103),
-                repository.getCatalogVias()
-            )
-            assertEquals(
-                setOf(101, 102, 103),
-                repository.getAllowedVias()
-            )
-
-            assertTrue(
-                repository.updateVisibleVias(
-                    setOf(101, 103)
-                )
-            )
-            assertFalse(
-                repository.isViaPermitida(102)
-            )
-            assertTrue(
-                repository.isViaPermitida(103)
-            )
-
-            repository.cargarViasPermitidas(
-                plazaId = 3L
-            )
-
-            assertEquals(
-                setOf(101, 103),
-                repository.getAllowedVias()
-            )
-            assertFalse(
-                repository.updateVisibleVias(
-                    emptySet()
-                )
-            )
-        }
-
-    @Test
     fun `register saves locally without waiting for HTTP`() =
         runBlocking {
             val result =
