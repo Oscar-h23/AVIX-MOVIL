@@ -174,7 +174,6 @@ fun PantallaConfirmacion(
     val scope = rememberCoroutineScope()
     val allowedVias by repository.allowedVias.collectAsStateWithLifecycle()
     val isSaving by draft.saving.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(usuario?.plazaId) {
         usuario?.plazaId?.let { plazaId ->
