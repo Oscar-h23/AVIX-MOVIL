@@ -609,10 +609,11 @@ class IncidentRepository internal constructor(
         require(
             accion in setOf(
                 "FUGA",
-                "DERIVADO"
+                "DERIVADO",
+                "LIBERADO"
             )
         ) {
-            "Seleccione FUGA o DERIVADO."
+            "Seleccione FUGA, DERIVADO o LIBERADO."
         }
     }
 
