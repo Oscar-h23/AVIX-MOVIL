@@ -508,6 +508,8 @@ class IncidentRepository internal constructor(
                 .token == token
         ) {
             sessionManager.expireSession()
+            _catalogVias.value =
+                emptySet()
             _allowedVias.value =
                 emptySet()
 
