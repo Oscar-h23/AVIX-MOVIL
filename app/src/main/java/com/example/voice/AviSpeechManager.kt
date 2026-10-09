@@ -168,7 +168,10 @@ class AviSpeechManager private constructor(private val appContext: Context) {
     }
 
     private fun canUseEnhancedAudio(): Boolean {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        // Desactivado: AVIX usa directamente el audio capturado por SpeechRecognizer.
+        // El flujo AudioRecord + VAD + EXTRA_AUDIO_SOURCE empeoraba el reconocimiento
+        // de letras y números cortos de las placas.
+        return false
     }
 
     private fun shouldRetryWithEnhancedAudio(
@@ -410,11 +413,7 @@ class AviSpeechManager private constructor(private val appContext: Context) {
                 _voiceState.value = _voiceState.value.copy(
                     isListening = true,
                     stage = DiagnosticStage.STAGE_1,
-                    stageDescription = if (enhancedAudioActive) {
-                        "1/4 Reducción de ruido activa. Diga: acción, vía y placa."
-                    } else {
-                        "1/4 Diga: acción, vía y placa."
-                    },
+                    stageDescription = "1/4 Diga: acción, vía y placa.",
                     errorMessage = null
                 )
             }
@@ -868,8 +867,8 @@ class AviSpeechManager private constructor(private val appContext: Context) {
     }
 
     fun startListening() {
-        // Primer intento rápido y compatible. El modo reforzado se activa
-        // automáticamente solo si este resultado sale dudoso o incompleto.
+        // AVIX usa siempre el reconocimiento estándar del sistema para preservar
+        // las letras y números de la placa sin procesamiento intermedio.
         automaticEnhancedRetryAttempted = false
         automaticRetryInProgress = false
         currentAttemptUsesEnhancedAudio = false
@@ -947,20 +946,12 @@ class AviSpeechManager private constructor(private val appContext: Context) {
                     return@post
                 }
 
-                val enhancedSession = if (
-                    preferEnhancedAudio &&
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-                ) {
-                    noiseReducedAudioSource.start { state ->
-                        handleVadState(state)
-                    }
-                } else {
-                    null
-                }
+                // Reconocimiento directo: sin AudioRecord propio, sin VAD intermedio
+                // y sin inyección de audio mediante EXTRA_AUDIO_SOURCE.
+                val enhancedSession: NoiseReducedAudioSource.Session? = null
 
-                enhancedAudioActive = enhancedSession != null
-                currentAttemptUsesEnhancedAudio =
-                    enhancedSession != null
+                enhancedAudioActive = false
+                currentAttemptUsesEnhancedAudio = false
 
                 val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                     putExtra(
@@ -1029,15 +1020,7 @@ class AviSpeechManager private constructor(private val appContext: Context) {
                     )
                 }
 
-                val audioModeText = if (enhancedSession != null) {
-                    if (enhancedSession.noiseSuppressorEnabled) {
-                        "Captura reforzada + reducción de ruido activa."
-                    } else {
-                        "Captura reforzada para voz activa."
-                    }
-                } else {
-                    "Captura rápida activa."
-                }
+                val audioModeText = "Micrófono listo."
 
                 val previousRaw =
                     _voiceState.value.recognizedText
